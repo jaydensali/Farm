@@ -14,7 +14,9 @@
         .growing { background: green; }
         .grown { background: #4CAF50; cursor: pointer; }
         .gold { background: gold; }
+        .silver { background: silver; }
         .weather-ui { position: absolute; top: 10px; right: 10px; background: white; padding: 10px; border-radius: 5px; display: none; }
+        #levelUpMessage { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: #f39c12; padding: 10px; color: white; border-radius: 5px; display: none; }
     </style>
 </head>
 <body>
@@ -23,9 +25,11 @@
         <p>Coins: <span id="coins">10</span> | EXP: <span id="exp">0</span> | Level: <span id="level">1</span> | Land: <span id="land">1</span> | Seeds: <span id="seeds">0</span></p>
         <button onclick="buySeed()">Buy Seed (<span id="seedCost">5</span> Coins)</button>
         <button onclick="buyLand()">Buy Land (<span id="landCost">5</span> Coins)</button>
-        <select id="cropSelect"></select>
+        <select id="cropSelect" onchange="updateSeedCost()"></select>
+        <p>Seed Cost: <span id="selectedSeedCost">5</span> Coins</p>
     </div>
     <div class="farm" id="farm"></div>
+    <div id="levelUpMessage">LEVEL UP!</div>
     <div id="weatherUI" class="weather-ui"></div>
     
     <script>
@@ -58,7 +62,13 @@
         let level = Math.floor(exp / 50) + 1;
         let seedCost = 5 + (level - 1) * 5;
         const farm = document.getElementById("farm");
-        const crops = ["🌱", "🌾", "🍅", "🥕", "🌽"];
+        const crops = [
+            { name: "🌱", coins: 10, baseCost: 5 },
+            { name: "🌾", coins: 15, baseCost: 10 },
+            { name: "🍅", coins: 20, baseCost: 15 },
+            { name: "🥕", coins: 25, baseCost: 20 },
+            { name: "🌽", coins: 30, baseCost: 25 }
+        ];
         const cropSelect = document.getElementById("cropSelect");
         
         function updateStats() {
@@ -68,7 +78,7 @@
             document.getElementById("landCost").textContent = landCost;
             document.getElementById("exp").textContent = exp;
             document.getElementById("level").textContent = level;
-            document.getElementById("seedCost").textContent = seedCost;
+            document.getElementById("selectedSeedCost").textContent = seedCost;
             setCookie("coins", coins, 365);
             setCookie("seeds", seeds, 365);
             setCookie("land", land, 365);
@@ -77,8 +87,9 @@
         }
         
         function buySeed() {
-            if (coins >= seedCost) {
-                coins -= seedCost;
+            let selectedCrop = crops.find(crop => crop.name === cropSelect.value);
+            if (coins >= selectedCrop.baseCost) {
+                coins -= selectedCrop.baseCost;
                 seeds++;
                 updateStats();
             } else {
@@ -120,28 +131,55 @@
             plot.classList.remove("seed");
             plot.classList.add("grown");
             plot.textContent = crop;
-            plot.onclick = () => harvestCrop(plot);
+            plot.onclick = () => harvestCrop(plot, crop);
         }
         
-        function harvestCrop(plot) {
+        function harvestCrop(plot, crop) {
             plot.classList.remove("grown");
             plot.textContent = "";
-            coins += 10;
+            let selectedCrop = crops.find(cropItem => cropItem.name === crop);
+            coins += selectedCrop.coins;
             exp += 5;
-            level = Math.floor(exp / 50) + 1;
+            let newLevel = Math.floor(exp / 50) + 1;
+            if (newLevel > level) {
+                level = newLevel;
+                document.getElementById("levelUpMessage").style.display = "block";
+                setTimeout(() => document.getElementById("levelUpMessage").style.display = "none", 2000);
+            }
             seedCost = 5 + (level - 1) * 5;
+
+            // 10% chance for Gold Crop, 20% chance for Silver Crop
+            let randomChance = Math.random();
+            if (randomChance < 0.1) {
+                plot.classList.add("gold");
+                plot.style.backgroundColor = "gold"; // Set the background color to gold
+            } else if (randomChance < 0.3) {
+                plot.classList.add("silver");
+                plot.style.backgroundColor = "silver"; // Set the background color to silver
+            } else {
+                plot.classList.remove("gold", "silver"); // Regular crop, no gold/silver
+                plot.style.backgroundColor = "brown"; // Reset to brown
+            }
+
             updateStats();
             plot.onclick = () => plantSeed(plot);
         }
         
         function updateCropSelect() {
             cropSelect.innerHTML = "";
-            for (let i = 0; i < level && i < crops.length; i++) {
+            let availableCrops = crops.slice(0, level); // Unlock more crops as you level up
+            availableCrops.forEach(crop => {
                 let option = document.createElement("option");
-                option.value = crops[i];
-                option.textContent = crops[i];
+                option.value = crop.name;
+                option.textContent = crop.name;
                 cropSelect.appendChild(option);
-            }
+            });
+        }
+        
+        function updateSeedCost() {
+            let selectedCrop = crops.find(crop => crop.name === cropSelect.value);
+            seedCost = selectedCrop.baseCost;
+            document.getElementById("selectedSeedCost").textContent = seedCost;
         }
         
         for (let i = 0; i < land; i++) createPlot();
