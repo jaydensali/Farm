@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farm</title>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
+        h1 { color: #4CAF50; }
+        .stats { background: white; padding: 10px; border-radius: 10px; display: inline-block; margin-bottom: 10px; }
+        .farm { display: grid; grid-template-columns: repeat(5, 60px); gap: 10px; justify-content: center; padding: 10px; }
+        .plot { width: 60px; height: 60px; background: brown; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 24px; border-radius: 5px; transition: 0.3s; }
+        .seed { background: green; }
+        .growing { background: green; }
+        .grown { background: #4CAF50; cursor: pointer; }
+        .gold { background: gold; }
+        .weather-ui { position: absolute; top: 10px; right: 10px; background: white; padding: 10px; border-radius: 5px; display: none; }
+    </style>
+</head>
+<body>
+    <h1>Farm</h1>
+    <div class="stats">
+        <p>Coins: <span id="coins">10</span> | EXP: <span id="exp">0</span> | Level: <span id="level">1</span> | Land: <span id="land">1</span> | Seeds: <span id="seeds">0</span></p>
+        <button onclick="buySeed()">Buy Seed (<span id="seedCost">5</span> Coins)</button>
+        <button onclick="buyLand()">Buy Land (<span id="landCost">5</span> Coins)</button>
+        <select id="cropSelect"></select>
+    </div>
+    <div class="farm" id="farm"></div>
+    <div id="weatherUI" class="weather-ui"></div>
+    
+    <script>
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                let date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + value + expires + "; path=/";
+        }
+
+        function getCookie(name) {
+            let nameEQ = name + "=";
+            let ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+        
+        let coins = parseInt(getCookie("coins")) || 10;
+        let seeds = parseInt(getCookie("seeds")) || 0;
+        let land = parseInt(getCookie("land")) || 1;
+        let landCost = parseInt(getCookie("landCost")) || 5;
+        let exp = parseInt(getCookie("exp")) || 0;
+        let level = Math.floor(exp / 50) + 1;
+        let seedCost = 5 + (level - 1) * 5;
+        const farm = document.getElementById("farm");
+        const crops = ["🌱", "🌾", "🍅", "🥕", "🌽"];
+        const cropSelect = document.getElementById("cropSelect");
+        
+        function updateStats() {
+            document.getElementById("coins").textContent = coins;
+            document.getElementById("land").textContent = land;
+            document.getElementById("seeds").textContent = seeds;
+            document.getElementById("landCost").textContent = landCost;
+            document.getElementById("exp").textContent = exp;
+            document.getElementById("level").textContent = level;
+            document.getElementById("seedCost").textContent = seedCost;
+            setCookie("coins", coins, 365);
+            setCookie("seeds", seeds, 365);
+            setCookie("land", land, 365);
+            setCookie("landCost", landCost, 365);
+            setCookie("exp", exp, 365);
+        }
+        
+        function buySeed() {
+            if (coins >= seedCost) {
+                coins -= seedCost;
+                seeds++;
+                updateStats();
+            } else {
+                alert("Not enough coins!");
+            }
+        }
+        
+        function createPlot() {
+            let plot = document.createElement("div");
+            plot.classList.add("plot");
+            plot.onclick = () => plantSeed(plot);
+            farm.appendChild(plot);
+        }
+        
+        function buyLand() {
+            if (coins >= landCost) {
+                coins -= landCost;
+                land++;
+                landCost *= 2;
+                createPlot();
+                updateStats();
+            } else {
+                alert("Not enough coins!");
+            }
+        }
+        
+        function plantSeed(plot) {
+            if (!plot.classList.contains("seed") && seeds > 0) {
+                let selectedCrop = cropSelect.value;
+                plot.classList.add("seed");
+                plot.textContent = selectedCrop;
+                seeds--;
+                updateStats();
+                setTimeout(() => growCrop(plot, selectedCrop), 3000);
+            }
+        }
+        
+        function growCrop(plot, crop) {
+            plot.classList.remove("seed");
+            plot.classList.add("grown");
+            plot.textContent = crop;
+            plot.onclick = () => harvestCrop(plot);
+        }
+        
+        function harvestCrop(plot) {
+            plot.classList.remove("grown");
+            plot.textContent = "";
+            coins += 10;
+            exp += 5;
+            level = Math.floor(exp / 50) + 1;
+            seedCost = 5 + (level - 1) * 5;
+            updateStats();
+            plot.onclick = () => plantSeed(plot);
+        }
+        
+        function updateCropSelect() {
+            cropSelect.innerHTML = "";
+            for (let i = 0; i < level && i < crops.length; i++) {
+                let option = document.createElement("option");
+                option.value = crops[i];
+                option.textContent = crops[i];
+                cropSelect.appendChild(option);
+            }
+        }
+        
+        for (let i = 0; i < land; i++) createPlot();
+        updateStats();
+        updateCropSelect();
+    </script>
+</body>
+</html>
